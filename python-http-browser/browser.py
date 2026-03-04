@@ -39,6 +39,13 @@ post_parser.add_argument('--param', action='append')
 cookies = subparser.add_parser('list-cookies')
 cookies.add_argument('--url')
 
+# Header Logik
+header_parser = subparser.add_parser('header')
+header_parser.add_argument('--url')
+
+detect_parser = subparser.add_parser('detect-cms')
+detect_parser.add_argument('--url')
+
 args = parser.parse_args()
 
 driver = webdriver.Firefox(options=options, service=service)
@@ -72,8 +79,53 @@ elif args.command == 'list-cookies':
     driver.get(args.url)
     cookies = driver.get_cookies()
     for cookie in cookies:
-        output = '\n'.join([f"\033[32m{c['name']}\033[0m : {c['value']}" for c in cookies])
+        output = '\n'.join([f"\033[32m{cookie['name']}\033[0m : {cookie['value']}" for cookie in cookies])
 
+elif args.command == 'header':
+    driver.get(args.url)
+    # execute_async_script wird verwendet, da fetch() asynchron ist
+    # callback signalisiert Selenium wenn der Request fertig ist
+    # Object.fromEntries() konvertiert die Headers direkt in ein Dictionary
+    headers = driver.execute_async_script(
+        """
+        const callback = arguments[arguments.length - 1];
+        const url = arguments[0];
+        fetch(url).then(response => callback(Object.fromEntries(response.headers)));
+        """
+    , args.url)
+
+    # Jeden Header auf einer eigenen Zeile ausgeben
+    output = '\n'.join(f'\033[1m\033[31m{key} :\033[0m {value}' for key, value in headers.items())
+
+elif args.command == 'detect-cms':
+    driver.get(args.url)
+    source = driver.page_source
+    used_cms = None
+
+    # generator meta tag sagt aus welches cms verwendet wurde (am einfachsten, aber nicht zuverlässig)
+    try:
+        generator = driver.find_element(by=By.CSS_SELECTOR, value='meta[name="generator"]')
+        used_cms = generator.get_attribute('content')
+    except:
+        pass
+
+    # wenn generator tag nicht gefunden/versteckt wurde, dann wird nach Signaturen gesucht
+    cms_patterns = {
+        'WordPress': ['/wp-content/', 'wp-admin/', 'wp-includes/', 'wordpress'],
+        'PrestaShop': ['var prestashop', '/modules/prestashop'],
+        'Contao': ['bundles/contao', '_contao/', 'contao', 'contao/main.php'],
+        'Webflow': ['webflow.com', 'webflow'],
+        'Shopify': ['cdn.shopify.com'],
+        'Wix': ['static.wixstatic.com'],
+    }
+
+    # durch source durchgehen und schauen, ob cms pattern da sind
+    for cms, signature in cms_patterns.items():
+        if any(sig in source for sig in signature):
+            used_cms = cms
+            break
+
+    output = f'\033[1mCMS found:\033[32m {used_cms} \033[0m'
 
 print(f"\033[1m\033[34mOUTPUT:\033[0m\n{output if output else 'No output'}")
 
