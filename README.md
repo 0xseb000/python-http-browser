@@ -1,8 +1,8 @@
 # Python HTTP Browser
 
-Ein leichtgewichtiger HTTP Browser der über das Terminal bedient wird. Das Programm ermöglicht das Scrapen von HTML-Tags, das Senden von GET- und POST-Requests sowie das Anzeigen von Cookies einer Webseite.
+Ein leichtgewichtiger HTTP Browser der über das Terminal bedient wird. Das Programm ermöglicht das Scrapen von HTML-Tags, das Senden von GET- und POST-Requests, das Anzeigen von Cookies, HTTP-Headers sowie die Erkennung von CMS-Systemen einer Webseite.
 
-Der Browser basiert auf **Selenium** mit einem **Firefox** Treiber im Headless-Modus. Damit läuft alles im Hintergrund ohne ein Browserfenster zu öffnen. Die Steuerung erfolgt vollständig über **CLI-Argumente** im POSIX-Standard (`--flag value`).
+Der Browser basiert auf Selenium mit einem Firefox Treiber im Headless-Modus. Damit läuft alles im Hintergrund ohne ein Browserfenster zu öffnen. Die Steuerung erfolgt vollständig über CLI-Argumente im POSIX-Standard (`--flag value`).
 
 ---
 
@@ -70,6 +70,30 @@ Zeigt alle Cookies einer Webseite an.
 
 ---
 
+### HTTP Headers anzeigen
+
+Zeigt alle HTTP Response Headers einer Webseite an.
+
+    python browser.py header --url <url>
+
+**Beispiel:**
+
+    python browser.py header --url https://www.selenium.dev/
+
+---
+
+### CMS erkennen
+
+Erkennt das verwendete CMS einer Webseite.
+
+    python browser.py detect-cms --url <url>
+
+**Beispiel:**
+
+    python browser.py detect-cms --url https://ch.gymshark.com/
+
+---
+
 ## Befehlsliste
 
 | Befehl         | Beschreibung                                      |
@@ -78,14 +102,18 @@ Zeigt alle Cookies einer Webseite an.
 | `get`          | GET-Request mit Query-Parameter senden            |
 | `post`         | Formular ausfüllen und absenden (POST-Request)    |
 | `list-cookies` | Alle Cookies einer Webseite anzeigen              |
+| `header`       | HTTP Response Headers anzeigen                    |
+| `detect-cms`   | CMS einer Webseite erkennen                       |
 
 ---
 
 ## Feature Dokumentation
 
-| Feature        | Datei       | Zeile |
-|----------------|-------------|-------|
-| scrape         | browser.py  | 49    |
-| get            | browser.py  | 53    |
-| post           | browser.py  | 57    |
-| list-cookies   | browser.py  | 71    |
+| Feature      | Datei      | Zeile |
+|--------------|------------|-------|
+| scrape       | browser.py | 56    |
+| get          | browser.py | 60    |
+| post         | browser.py | 64    |
+| list-cookies | browser.py | 78    |
+| header       | browser.py | 84    |
+| detect-cms   | browser.py | 100   |
