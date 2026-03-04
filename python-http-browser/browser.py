@@ -10,7 +10,7 @@ options.add_argument('--headless')
 # firefox json view ausblenden, da dieser die Formatierung verhindert
 options.set_preference("devtools.jsonview.enabled", False)
 
-# Ich logge den output in error.log
+# Ich logge den Output in error.log
 service = FirefoxService(
     log_output=open('error.log', 'w'),
     service_args=['--log', 'trace'],
@@ -102,7 +102,7 @@ elif args.command == 'detect-cms':
     source = driver.page_source
     used_cms = None
 
-    # generator meta tag sagt aus welches cms verwendet wurde (am einfachsten, aber nicht zuverlässig)
+    # generator meta tag sagt aus, welches cms verwendet wurde (am einfachsten, aber nicht zuverlässig)
     try:
         generator = driver.find_element(by=By.CSS_SELECTOR, value='meta[name="generator"]')
         used_cms = generator.get_attribute('content')
