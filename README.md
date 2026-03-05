@@ -111,9 +111,9 @@ Erkennt das verwendete CMS einer Webseite.
 
 | Feature      | Datei      | Zeile |
 |--------------|------------|-------|
-| scrape       | browser.py | 56    |
-| get          | browser.py | 60    |
-| post         | browser.py | 64    |
-| list-cookies | browser.py | 78    |
-| header       | browser.py | 84    |
-| detect-cms   | browser.py | 100   |
+| scrape       | browser.py | 60    |
+| get          | browser.py | 64    |
+| post         | browser.py | 68    |
+| list-cookies | browser.py | 81    |
+| header       | browser.py | 86    |
+| detect-cms   | browser.py | 102   |
