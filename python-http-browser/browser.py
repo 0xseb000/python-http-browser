@@ -4,68 +4,71 @@ from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.firefox.service import Service as FirefoxService
 import argparse
 
-options = FirefoxOptions()
-# --headless damit kein firefox fenster geöffnet
-options.add_argument('--headless')
-# firefox json view ausblenden, da dieser die Formatierung verhindert
-options.set_preference("devtools.jsonview.enabled", False)
+# Headless Firefox Driver erstellen
+def create_driver():
+    options = FirefoxOptions()
+    # --headless damit kein firefox fenster geöffnet
+    options.add_argument('--headless')
+    # firefox json view deaktivieren, da dieser die Formatierung verhindert
+    options.set_preference("devtools.jsonview.enabled", False)
 
-# Ich logge den Output in error.log
-service = FirefoxService(
-    log_output=open('error.log', 'w'),
-    service_args=['--log', 'trace'],
-)
+    # Logged Output in error.log
+    service = FirefoxService(
+        log_output=open('error.log', 'w'),
+        service_args=['--log', 'trace'],
+    )
 
-# Damit --parsing funktioniert, posix für gutes ux
-parser = argparse.ArgumentParser()
-subparser = parser.add_subparsers(dest='command')
+    driver = webdriver.Firefox(options=options, service=service)
+    driver.implicitly_wait(10)  # Selenium Zeit geben das Element zu finden
+    return driver
 
-# Scrape Logik
-scrape_parser = subparser.add_parser('scrape')
-scrape_parser.add_argument('--url')
-scrape_parser.add_argument('--tag')
+def create_parser():
+    # Damit --parsing funktioniert, posix für gutes ux
+    parser = argparse.ArgumentParser()
+    subparser = parser.add_subparsers(dest='command')
 
-# Get Logik
-get_parser = subparser.add_parser('get')
-get_parser.add_argument('--url')
-get_parser.add_argument('--param')
+    # Scrape Command
+    scrape_parser = subparser.add_parser('scrape')
+    scrape_parser.add_argument('--url')
+    scrape_parser.add_argument('--tag')
 
-# Post Logik
-post_parser = subparser.add_parser('post')
-post_parser.add_argument('--url')
-post_parser.add_argument('--param', action='append')
+    # Get Command
+    get_parser = subparser.add_parser('get')
+    get_parser.add_argument('--url')
+    get_parser.add_argument('--param')
 
-# Cookie Liste
-cookies = subparser.add_parser('list-cookies')
-cookies.add_argument('--url')
+    # Post Command
+    post_parser = subparser.add_parser('post')
+    post_parser.add_argument('--url')
+    # action='append' damit --param mehrmals übergeben werden kann
+    post_parser.add_argument('--param', action='append')
 
-# Header Logik
-header_parser = subparser.add_parser('header')
-header_parser.add_argument('--url')
+    # Cookie Liste Command
+    cookies = subparser.add_parser('list-cookies')
+    cookies.add_argument('--url')
 
-detect_parser = subparser.add_parser('detect-cms')
-detect_parser.add_argument('--url')
+    # Header Command
+    header_parser = subparser.add_parser('header')
+    header_parser.add_argument('--url')
 
-args = parser.parse_args()
+    # Detect CMS Command
+    detect_parser = subparser.add_parser('detect-cms')
+    detect_parser.add_argument('--url')
 
-driver = webdriver.Firefox(options=options, service=service)
-driver.implicitly_wait(10) # Selenium Zeit geben das Element zu finden
+    return parser.parse_args()
 
-output = None
+def scrape_tag(url, tag):
+    driver.get(url)
+    return driver.find_element(by=By.TAG_NAME, value=tag).text  # ohne .text wird nur das WebElement ausgegeben
 
-if args.command == 'scrape': # Hier scrapen wir nach Tag
-    driver.get(args.url)
-    output = driver.find_element(by=By.TAG_NAME, value=args.tag).text # ohne .text wird nur das WebElement ausgegeben
+def get(url, params):
+    driver.get(url + '?' + params)
+    return driver.find_element(by=By.TAG_NAME, value='body').text
 
-elif args.command == 'get': # Hier verwenden wit get und fügen parameter hinzu
-    driver.get(args.url + '?' + args.param)
-    output = driver.find_element(by=By.TAG_NAME, value='body').text
-
-elif args.command == 'post':
-    driver.get(args.url)
-
+def post(url, params):
+    driver.get(url)
     # Wenn es mehrere Parameter gibt
-    for current_param in args.param:
+    for current_param in params:
         key, value = current_param.split('=')
         field = driver.find_element(by=By.NAME, value=key)
         field.send_keys(value)
@@ -73,16 +76,15 @@ elif args.command == 'post':
     # Auf den Form button klicken
     submit_button = driver.find_element(by=By.TAG_NAME, value='button')
     submit_button.click()
-    output = driver.find_element(by=By.TAG_NAME, value='body').text
+    return driver.find_element(by=By.TAG_NAME, value='body').text
 
-elif args.command == 'list-cookies':
-    driver.get(args.url)
+def list_cookies(url):
+    driver.get(url)
     cookies = driver.get_cookies()
-    for cookie in cookies:
-        output = '\n'.join([f"\033[32m{cookie['name']}\033[0m : {cookie['value']}" for cookie in cookies])
+    return '\n'.join([f"\033[32m{cookie['name']}\033[0m : {cookie['value']}" for cookie in cookies])
 
-elif args.command == 'header':
-    driver.get(args.url)
+def header(url):
+    driver.get(url)
     # execute_async_script wird verwendet, da fetch() asynchron ist
     # callback signalisiert Selenium wenn der Request fertig ist
     # Object.fromEntries() konvertiert die Headers direkt in ein Dictionary
@@ -92,24 +94,25 @@ elif args.command == 'header':
         const url = arguments[0];
         fetch(url).then(response => callback(Object.fromEntries(response.headers)));
         """
-    , args.url)
+        , url)
 
     # Jeden Header auf einer eigenen Zeile ausgeben
-    output = '\n'.join(f'\033[1m\033[31m{key} :\033[0m {value}' for key, value in headers.items())
+    return '\n'.join(f'\033[1m\033[31m{key} :\033[0m {value}' for key, value in headers.items())
 
-elif args.command == 'detect-cms':
-    driver.get(args.url)
+def detect_cms(url):
+    driver.get(url)
     source = driver.page_source
     used_cms = None
 
-    # generator meta tag sagt aus, welches cms verwendet wurde (am einfachsten, aber nicht zuverlässig)
+    # Einfachste Methode: Generator Meta-Tag auslesen
+    # Nicht immer zuverlässig, da viele Sites diesen Tag entfernen
     try:
         generator = driver.find_element(by=By.CSS_SELECTOR, value='meta[name="generator"]')
         used_cms = generator.get_attribute('content')
-    except:
+    except Exception:
         pass
 
-    # wenn generator tag nicht gefunden/versteckt wurde, dann wird nach Signaturen gesucht
+    # Fallback: Bekannte CMS Signaturen im Quellcode suchen
     cms_patterns = {
         'WordPress': ['/wp-content/', 'wp-admin/', 'wp-includes/', 'wordpress'],
         'PrestaShop': ['var prestashop', '/modules/prestashop'],
@@ -125,9 +128,36 @@ elif args.command == 'detect-cms':
             used_cms = cms
             break
 
-    output = f'\033[1mCMS found:\033[32m {used_cms} \033[0m'
+    return f'\033[1mCMS found:\033[32m {used_cms} \033[0m'
 
-print(f"\033[1m\033[34mOUTPUT:\033[0m\n{output if output else 'No output'}")
+# Startfunktion
+def run():
+    output = None
 
-# Driver beenden nach dem scraping
-driver.quit()
+    if args.command == 'scrape':
+        output = scrape_tag(args.url, args.tag)
+    elif args.command == 'get':
+        output = get(args.url, args.param)
+    elif args.command == 'post':
+        output = post(args.url, args.param)
+    elif args.command == 'list-cookies':
+        output = list_cookies(args.url)
+    elif args.command == 'header':
+        output = header(args.url)
+    elif args.command == 'detect-cms':
+        output = detect_cms(args.url)
+
+    print(f"\033[1m\033[34mOUTPUT:\033[0m\n{output if output else 'No output'}")
+
+
+driver = create_driver()
+args = create_parser()
+
+try:
+    run()
+finally:
+    driver.quit()
+
+
+
+
